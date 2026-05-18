@@ -88,6 +88,19 @@ class MusicScannerRepository(private val songDao: SongDao) {
         }
         // === 预创建结束 ===
 
+        // 2. 计算 AB 式歌曲的合并采样数：A 段 totalSamples = A + B，匹配 PC 端数据喵！
+        val abCombinedSamples = mutableMapOf<String, Long>()
+        abMarkedSongs.forEach { song ->
+            if (!song.isAbPartB) {
+                val pair = findAbPair(song, abMarkedSongs)
+                if (pair != null) {
+                    val aSamples = if (song.totalSamples > 0L) song.totalSamples else AudioScanner.getApproximateSamples(context, song.mediaId, song.filePath, song.duration)
+                    val bSamples = if (pair.second.totalSamples > 0L) pair.second.totalSamples else AudioScanner.getApproximateSamples(context, pair.second.mediaId, pair.second.filePath, pair.second.duration)
+                    abCombinedSamples["${song.fileName.lowercase()}|${song.duration}"] = aSamples + bSamples
+                }
+            }
+        }
+
         val insertList = mutableListOf<Song>()
         val updateList = mutableListOf<SongMetadataUpdate>()
         val result = mutableListOf<Song>()
@@ -105,9 +118,15 @@ class MusicScannerRepository(private val songDao: SongDao) {
                 val resolvedAlbumId = dbSong.song.albumId
                     ?: song.albumEntity?.name?.lowercase()?.let { albumMap[it] }
 
+                val abTotal = abCombinedSamples[fingerprint]
+                val approximateTotal = abTotal
+                    ?: if (dbSong.totalSamples <= 0L) {
+                        if (song.totalSamples > 0L) song.totalSamples else AudioScanner.getApproximateSamples(context, song.mediaId, song.filePath, song.duration)
+                    } else dbSong.totalSamples
+
                 updateList.add(SongMetadataUpdate(
                     songId = dbSong.id,
-                    total = dbSong.totalSamples,
+                    total = approximateTotal,
                     start = dbSong.loopStart,
                     end = dbSong.loopEnd,
                     rating = dbSong.rating,
@@ -115,7 +134,7 @@ class MusicScannerRepository(private val songDao: SongDao) {
                     albumId = resolvedAlbumId,
                     displayName = dbSong.displayName,
                     coverPath = dbSong.coverPath,
-                    isAbPartB = song.isAbPartB // 关键细节：由最新的扫描结果覆盖喵！
+                    isAbPartB = song.isAbPartB
                 ))
                 result.add(song.copy(song = song.song.copy(id = dbSong.id)))
             } else if (!seenFingerprints.contains(fingerprint)) {
@@ -131,7 +150,9 @@ class MusicScannerRepository(private val songDao: SongDao) {
             val entities = insertList.map { song ->
                 val aId = song.artistEntity?.name?.lowercase()?.let { artistMap[it] }
                 val alId = song.albumEntity?.name?.lowercase()?.let { albumMap[it] }
-                song.song.copy(artistId = aId, albumId = alId)
+                val total = abCombinedSamples["${song.fileName.lowercase()}|${song.duration}"]
+                    ?: if (song.totalSamples > 0L) song.totalSamples else AudioScanner.getApproximateSamples(context, song.mediaId, song.filePath, song.duration)
+                song.song.copy(artistId = aId, albumId = alId, totalSamples = total)
             }
             val newIds = songDao.insertSongsBatch(entities)
             

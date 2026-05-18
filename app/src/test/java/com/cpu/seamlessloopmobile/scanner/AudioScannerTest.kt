@@ -73,4 +73,28 @@ class AudioScannerTest {
         assertEquals("艺术家对不上喵！", "莱芙之歌", scannedSong?.artist)
         assertEquals("路径对不上喵！", filePath, scannedSong?.filePath)
     }
+
+    @Test
+    fun testActualAudioScannerSamples() {
+        var dir = File("music_test")
+        if (!dir.exists()) {
+            dir = File("../music_test")
+        }
+        if (!dir.exists()) {
+            println("music_test directory not found!")
+            return
+        }
+        val files = dir.listFiles { _, name -> name.lowercase().endsWith(".ogg") } ?: emptyArray()
+        println("=== Testing Actual AudioScanner.getApproximateSamples on OGG files ===")
+        for (oggFile in files) {
+            val samples = AudioScanner.getApproximateSamples(oggFile.absolutePath, 1000L)
+            println("  File: ${oggFile.name} -> samples (for 1000ms) = $samples")
+            if (oggFile.name.startsWith("BGM_") || oggFile.name.startsWith("m0")) {
+                assertEquals("OGG 48kHz sample rate should be correct喵！", 48000L, samples)
+            } else if (oggFile.name.startsWith("0000")) {
+                assertEquals("OGG 44.1kHz sample rate should be correct喵！", 44100L, samples)
+            }
+        }
+    }
 }
+

@@ -31,6 +31,8 @@ fun FineTunePage(
     onEditClick: (Boolean) -> Unit,
     onApplyAndListen: () -> Unit
 ) {
+    val displayLoopEnd = if (tempLoopEnd == 0L) song.totalSamples else tempLoopEnd
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -63,7 +65,7 @@ fun FineTunePage(
         Box(modifier = Modifier.weight(1f)) {
             TuneSectionBox(
                 label = "循环终点 (B)",
-                samples = tempLoopEnd,
+                samples = displayLoopEnd,
                 accentColor = Color(0xFFF398AF),
                 onValueChange = onEndValueChange,
                 onAdjustMs = onEndAdjustMs,

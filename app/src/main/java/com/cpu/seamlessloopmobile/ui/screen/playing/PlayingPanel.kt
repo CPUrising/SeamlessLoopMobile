@@ -162,7 +162,7 @@ fun PlayingPanel(
                                 viewModel.showDialog(
                                     com.cpu.seamlessloopmobile.viewmodel.MusicDialog.LoopEdit(
                                         isStart = isStart,
-                                        initialSamples = if(isStart) tempLoopStart else tempLoopEnd,
+                                        initialSamples = if(isStart) tempLoopStart else (if (tempLoopEnd == 0L) songItem.totalSamples else tempLoopEnd),
                                         onConfirm = { newValue ->
                                             if (isStart) tempLoopStart = newValue
                                             else tempLoopEnd = newValue

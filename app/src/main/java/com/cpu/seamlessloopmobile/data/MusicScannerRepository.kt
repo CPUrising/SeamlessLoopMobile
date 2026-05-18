@@ -94,8 +94,8 @@ class MusicScannerRepository(private val songDao: SongDao) {
             if (!song.isAbPartB) {
                 val pair = findAbPair(song, abMarkedSongs)
                 if (pair != null) {
-                    val aSamples = AudioScanner.getApproximateSamples(song.filePath, song.duration)
-                    val bSamples = AudioScanner.getApproximateSamples(pair.second.filePath, pair.second.duration)
+                    val aSamples = if (song.totalSamples > 0L) song.totalSamples else AudioScanner.getApproximateSamples(context, song.mediaId, song.filePath, song.duration)
+                    val bSamples = if (pair.second.totalSamples > 0L) pair.second.totalSamples else AudioScanner.getApproximateSamples(context, pair.second.mediaId, pair.second.filePath, pair.second.duration)
                     abCombinedSamples["${song.fileName.lowercase()}|${song.duration}"] = aSamples + bSamples
                 }
             }
@@ -120,9 +120,9 @@ class MusicScannerRepository(private val songDao: SongDao) {
 
                 val abTotal = abCombinedSamples[fingerprint]
                 val approximateTotal = abTotal
-                    ?: if (dbSong.totalSamples <= 0L)
-                        AudioScanner.getApproximateSamples(song.filePath, song.duration)
-                    else dbSong.totalSamples
+                    ?: if (dbSong.totalSamples <= 0L) {
+                        if (song.totalSamples > 0L) song.totalSamples else AudioScanner.getApproximateSamples(context, song.mediaId, song.filePath, song.duration)
+                    } else dbSong.totalSamples
 
                 updateList.add(SongMetadataUpdate(
                     songId = dbSong.id,
@@ -151,7 +151,7 @@ class MusicScannerRepository(private val songDao: SongDao) {
                 val aId = song.artistEntity?.name?.lowercase()?.let { artistMap[it] }
                 val alId = song.albumEntity?.name?.lowercase()?.let { albumMap[it] }
                 val total = abCombinedSamples["${song.fileName.lowercase()}|${song.duration}"]
-                    ?: AudioScanner.getApproximateSamples(song.filePath, song.duration)
+                    ?: if (song.totalSamples > 0L) song.totalSamples else AudioScanner.getApproximateSamples(context, song.mediaId, song.filePath, song.duration)
                 song.song.copy(artistId = aId, albumId = alId, totalSamples = total)
             }
             val newIds = songDao.insertSongsBatch(entities)

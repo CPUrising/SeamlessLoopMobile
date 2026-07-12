@@ -1,10 +1,12 @@
 package com.cpu.seamlessloopmobile.ui.components.app
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -24,8 +26,9 @@ import com.cpu.seamlessloopmobile.ui.components.common.MainInfoPage
 import com.cpu.seamlessloopmobile.ui.components.common.PlaybackProgressBar
 import com.cpu.seamlessloopmobile.ui.components.common.PlaybackControls
 import com.cpu.seamlessloopmobile.jni.NativeAudio
-import com.cpu.seamlessloopmobile.ui.theme.SeamlessLoopColors
+import com.cpu.seamlessloopmobile.ui.theme.SeamlessLoopPlayerColors
 import androidx.compose.ui.platform.LocalContext
+import com.cpu.seamlessloopmobile.utils.rememberHapticClick
 
 /**
  * 全屏音频播放核心面板，已移动至 ui/components/app/ 目录并融入 SeamlessLoopTheme 配色喵！(๑•̀ㅂ•́)و✧
@@ -38,6 +41,7 @@ fun PlayingPanel(
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onPrev: () -> Unit,
+    buttonHapticFeedbackEnabled: Boolean = true,
     onMoreClick: (com.cpu.seamlessloopmobile.model.Song) -> Unit
 ) {
     val context = LocalContext.current
@@ -81,8 +85,14 @@ fun PlayingPanel(
 
     AnimatedVisibility(
         visible = isVisible && playingSong != null,
-        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+        enter = slideInVertically(
+            animationSpec = tween(280),
+            initialOffsetY = { it / 8 }
+        ) + fadeIn(animationSpec = tween(220)),
+        exit = slideOutVertically(
+            animationSpec = tween(220),
+            targetOffsetY = { it / 10 }
+        ) + fadeOut(animationSpec = tween(180))
     ) {
         val songItem = playingSong ?: return@AnimatedVisibility
 
@@ -92,8 +102,8 @@ fun PlayingPanel(
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            SeamlessLoopColors.DarkBgGradientStart,
-                            SeamlessLoopColors.DarkBgGradientEnd
+                            SeamlessLoopPlayerColors.GradientStart,
+                            SeamlessLoopPlayerColors.GradientEnd
                         )
                     )
                 )
@@ -104,17 +114,26 @@ fun PlayingPanel(
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // --- 顶部控制 ---
+                val topPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .height(topPadding + 64.dp)
+                        .padding(top = topPadding, start = 4.dp, end = 4.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     IconButton(
-                        onClick = onClose,
-                        modifier = Modifier.align(Alignment.CenterStart)
+                        onClick = rememberHapticClick(buttonHapticFeedbackEnabled, onClick = onClose),
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .size(56.dp)
                     ) {
-                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = "收起", tint = SeamlessLoopColors.White)
+                        Icon(
+                            Icons.Default.KeyboardArrowDown,
+                            contentDescription = "收起",
+                            tint = SeamlessLoopPlayerColors.PrimaryText,
+                            modifier = Modifier.size(28.dp)
+                        )
                     }
                     
                     Row(
@@ -122,13 +141,40 @@ fun PlayingPanel(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         repeat(2) { index ->
+                            val selected = pagerState.currentPage == index
+                            val indicatorWidth by animateDpAsState(
+                                targetValue = if (selected) 18.dp else 6.dp,
+                                animationSpec = tween(160),
+                                label = "player_page_indicator"
+                            )
                             Box(
                                 modifier = Modifier
-                                    .size(if (pagerState.currentPage == index) 8.dp else 4.dp)
-                                    .clip(CircleShape)
-                                    .background(if (pagerState.currentPage == index) SeamlessLoopColors.PurpleAccent else SeamlessLoopColors.Gray)
+                                    .width(indicatorWidth)
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(
+                                        if (selected) {
+                                            SeamlessLoopPlayerColors.Primary
+                                        } else {
+                                            SeamlessLoopPlayerColors.Inactive
+                                        }
+                                    )
                             )
                         }
+                    }
+
+                    IconButton(
+                        onClick = rememberHapticClick(buttonHapticFeedbackEnabled) { onMoreClick(songItem) },
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .size(56.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = "更多",
+                            tint = SeamlessLoopPlayerColors.PrimaryText,
+                            modifier = Modifier.size(26.dp)
+                        )
                     }
                 }
 
@@ -139,7 +185,12 @@ fun PlayingPanel(
                     beyondViewportPageCount = 1
                 ) { page ->
                     when (page) {
-                        0 -> MainInfoPage(songItem, isPlaying, onRatingClick = { viewModel.cycleSongRating(songItem) })
+                        0 -> MainInfoPage(
+                            songItem = songItem,
+                            isPlaying = isPlaying,
+                            buttonHapticFeedbackEnabled = buttonHapticFeedbackEnabled,
+                            onRatingClick = { viewModel.cycleSongRating(songItem) }
+                        )
                         1 -> {
                             val isDetecting by viewModel.isDetectingLoop.collectAsState()
                             
@@ -211,12 +262,12 @@ fun PlayingPanel(
                         isPreparing = isPreparing,
                         isError = isError,
                         showLoading = showLoading,
+                        buttonHapticFeedbackEnabled = buttonHapticFeedbackEnabled,
                         onTogglePlayMode = { viewModel.togglePlayMode() },
                         onToggleSeamlessLoop = { viewModel.setSeamlessLoopEnabled(!isSeamlessLoopEnabled) },
                         onPrev = onPrev,
                         onPlayPause = onPlayPause,
-                        onNext = onNext,
-                        onMoreClick = { onMoreClick(songItem) }
+                        onNext = onNext
                     )
                 }
             }

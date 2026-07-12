@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 2,
+  "deviceId": "android-pixel-8",
+  "exportedAt": 1783779600000,
+  "playlists": [],
+  "loopPoints": [],
+  "ratings": [],
+  "playbackStatistics": {
+    "dateBucketBasis": "sourceLocal",
+    "devices": [
+      {
+        "deviceId": "android-pixel-8",
+        "displayName": "Google Pixel 8",
+        "firstSeenAtUtcMs": 1783588500000,
+        "lastSeenAtUtcMs": 1783779600000,
+        "currentGeneration": 2,
+        "platform": "android",
+        "displayNameUpdatedAtUtcMs": 1783588500000
+      },
+      {
+        "deviceId": "desktop-wpf-1",
+        "displayName": "Windows desktop",
+        "firstSeenAtUtcMs": 1783588500000,
+        "lastSeenAtUtcMs": 1783779600000,
+        "currentGeneration": 1,
+        "platform": "windows",
+        "displayNameUpdatedAtUtcMs": 1783588500000
+      }
+    ],
+    "songs": [
+      {
+        "song": {
+          "fileName": "  CAFÉ.MP3  ",
+          "durationMs": 123456,
+          "totalSamples": 5444400,
+          "normalizedFileName": "café.mp3"
+        },
+        "contributions": [
+          {
+            "deviceId": "android-pixel-8",
+            "generation": 2,
+            "datedListenMs": { "2026-07-10": 60000, "2026-07-11": 30000 },
+            "undatedListenMs": 12000,
+            "firstPlayedAtUtcMs": 1783717800000,
+            "lastPlayedAtUtcMs": 1783779600000,
+            "updatedAtUtcMs": 1783779600000
+          },
+          {
+            "deviceId": "desktop-wpf-1",
+            "generation": 1,
+            "datedListenMs": { "2026-07-09": 45000 },
+            "undatedListenMs": 0,
+            "firstPlayedAtUtcMs": 1783622400000,
+            "lastPlayedAtUtcMs": 1783622400000,
+            "updatedAtUtcMs": 1783622400000
+          }
+        ]
+      },
+      {
+        "song": {
+          "fileName": "Unresolved Mix.FLAC",
+          "durationMs": 654321,
+          "normalizedFileName": "unresolved mix.flac"
+        },
+        "contributions": [
+          {
+            "deviceId": "desktop-wpf-1",
+            "generation": 0,
+            "datedListenMs": {},
+            "undatedListenMs": 9876,
+            "firstPlayedAtUtcMs": 1783622400000,
+            "lastPlayedAtUtcMs": 1783622400000,
+            "updatedAtUtcMs": 1783622400000
+          }
+        ]
+      }
+    ],
+    "tombstones": [
+      {
+        "deviceId": "android-pixel-8",
+        "generation": 1,
+        "tombstonedAtUtcMs": 1783672200000,
+        "scope": "deviceGeneration",
+        "tombstonedByDeviceId": "android-pixel-8",
+        "reason": "local_clear"
+      }
+    ]
+  }
+}

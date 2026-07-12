@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import com.cpu.seamlessloopmobile.model.Folder
 import com.cpu.seamlessloopmobile.model.Playlist
 import com.cpu.seamlessloopmobile.model.Song
+import com.cpu.seamlessloopmobile.utils.rememberHapticClick
 import com.cpu.seamlessloopmobile.viewmodel.MusicDialog
 
 /**
@@ -61,7 +62,7 @@ fun MultiSelectBar(
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                     Spacer(modifier = Modifier.weight(1f))
-                    IconButton(onClick = { 
+                    IconButton(onClick = rememberHapticClick {
                         onShowDialog(
                             MusicDialog.ConfirmDeletePlaylist(
                                 playlist = Playlist(name = "选中的 ${selectedPlaylists.size} 个歌单"),
@@ -71,7 +72,7 @@ fun MultiSelectBar(
                     }) {
                         Icon(Icons.Default.Delete, contentDescription = "删除歌单")
                     }
-                    IconButton(onClick = onClearSelection) {
+                    IconButton(onClick = rememberHapticClick(onClick = onClearSelection)) {
                         Icon(Icons.Default.Close, contentDescription = "取消选择")
                     }
                 } else if (selectedFolders.isNotEmpty()) {
@@ -82,7 +83,7 @@ fun MultiSelectBar(
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                     Spacer(modifier = Modifier.weight(1f))
-                    IconButton(onClick = { 
+                    IconButton(onClick = rememberHapticClick {
                         onShowDialog(
                             MusicDialog.ImportFoldersOptions(
                                 count = selectedFolders.size,
@@ -99,7 +100,7 @@ fun MultiSelectBar(
                     }) {
                         Icon(Icons.Default.PlaylistAdd, contentDescription = "导入文件夹")
                     }
-                    IconButton(onClick = onClearSelection) {
+                    IconButton(onClick = rememberHapticClick(onClick = onClearSelection)) {
                         Icon(Icons.Default.Close, contentDescription = "取消选择")
                     }
                 } else {
@@ -110,7 +111,7 @@ fun MultiSelectBar(
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                     Spacer(modifier = Modifier.weight(1f))
-                    IconButton(onClick = { 
+                    IconButton(onClick = rememberHapticClick {
                         val dialog = if (playlists.isNotEmpty()) {
                             MusicDialog.AddToPlaylist(
                                 playlists = playlists,
@@ -134,7 +135,7 @@ fun MultiSelectBar(
                     }
 
                     val isAllSelected = songsInCurrentPage.isNotEmpty() && selectedItems.size >= songsInCurrentPage.size
-                    IconButton(onClick = { 
+                    IconButton(onClick = rememberHapticClick {
                         if (isAllSelected) {
                             onSelectAll(emptyList())
                         } else {
@@ -147,11 +148,11 @@ fun MultiSelectBar(
                         )
                     }
 
-                    IconButton(onClick = onShowMoreBulkOptions) {
+                    IconButton(onClick = rememberHapticClick(onClick = onShowMoreBulkOptions)) {
                         Icon(Icons.Default.MoreVert, contentDescription = "更多操作")
                     }
                     
-                    IconButton(onClick = onClearSelection) {
+                    IconButton(onClick = rememberHapticClick(onClick = onClearSelection)) {
                         Icon(Icons.Default.Close, contentDescription = "取消选择")
                     }
                 }

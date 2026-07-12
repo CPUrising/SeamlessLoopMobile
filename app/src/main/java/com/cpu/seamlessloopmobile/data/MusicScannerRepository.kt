@@ -254,6 +254,10 @@ class MusicScannerRepository(private val songDao: SongDao) {
                     ?: song.albumEntity?.name?.lowercase()?.let { albumMap[it] }
                 val resolvedMediaId = if (song.mediaId != 0L) song.mediaId else dbSong.mediaId
                 val resolvedTotalSamples = song.totalSamples.takeIf { it > 0L } ?: dbSong.totalSamples
+                val resolvedCoverPath = song.coverPath ?: dbSong.coverPath
+                val resolvedMimeType = song.mimeType ?: dbSong.mimeType
+                val resolvedSampleRateHz = song.sampleRateHz ?: dbSong.sampleRateHz
+                val resolvedBitrateKbps = song.bitrateKbps ?: dbSong.bitrateKbps
 
                 matchedDbIds.add(dbSong.id)
 
@@ -261,7 +265,11 @@ class MusicScannerRepository(private val songDao: SongDao) {
                         dbSong.filePath != song.filePath ||
                         dbSong.mediaId != resolvedMediaId ||
                         dbSong.duration != song.duration ||
-                        dbSong.totalSamples != resolvedTotalSamples
+                        dbSong.totalSamples != resolvedTotalSamples ||
+                        dbSong.coverPath != resolvedCoverPath ||
+                        dbSong.mimeType != resolvedMimeType ||
+                        dbSong.sampleRateHz != resolvedSampleRateHz ||
+                        dbSong.bitrateKbps != resolvedBitrateKbps
                 val pathOrNameChanged = dbSong.fileName != song.fileName || dbSong.filePath != song.filePath
 
                 if (needLocationUpdate) {
@@ -272,6 +280,10 @@ class MusicScannerRepository(private val songDao: SongDao) {
                         mediaId = resolvedMediaId,
                         duration = song.duration,
                         totalSamples = resolvedTotalSamples,
+                        coverPath = resolvedCoverPath,
+                        mimeType = resolvedMimeType,
+                        sampleRateHz = resolvedSampleRateHz,
+                        bitrateKbps = resolvedBitrateKbps,
                         lastModified = System.currentTimeMillis()
                     )
                     if (pathOrNameChanged) pathUpdatedCount++
@@ -285,6 +297,10 @@ class MusicScannerRepository(private val songDao: SongDao) {
                 // 性能极致优化看门狗：只有当歌手关联、专辑关联或 AB 段状态发生实际改变时，才刷写写盘更新喵！
                 val needUpdate = dbSong.song.artistId != resolvedArtistId ||
                         dbSong.song.albumId != resolvedAlbumId ||
+                        dbSong.coverPath != resolvedCoverPath ||
+                        dbSong.mimeType != resolvedMimeType ||
+                        dbSong.sampleRateHz != resolvedSampleRateHz ||
+                        dbSong.bitrateKbps != resolvedBitrateKbps ||
                         dbSong.song.isAbPartB != song.isAbPartB
 
                 if (needUpdate) {
@@ -297,7 +313,10 @@ class MusicScannerRepository(private val songDao: SongDao) {
                         artistId = resolvedArtistId,
                         albumId = resolvedAlbumId,
                         displayName = dbSong.displayName,
-                        coverPath = dbSong.coverPath,
+                        coverPath = resolvedCoverPath,
+                        mimeType = resolvedMimeType,
+                        sampleRateHz = resolvedSampleRateHz,
+                        bitrateKbps = resolvedBitrateKbps,
                         isAbPartB = song.isAbPartB
                     ))
                 }
@@ -305,6 +324,10 @@ class MusicScannerRepository(private val songDao: SongDao) {
                     id = dbSong.id,
                     mediaId = resolvedMediaId,
                     totalSamples = resolvedTotalSamples,
+                    coverPath = resolvedCoverPath,
+                    mimeType = resolvedMimeType,
+                    sampleRateHz = resolvedSampleRateHz,
+                    bitrateKbps = resolvedBitrateKbps,
                     artistId = resolvedArtistId,
                     albumId = resolvedAlbumId
                 )))

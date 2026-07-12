@@ -10,11 +10,25 @@ import com.cpu.seamlessloopmobile.model.Song
 import com.cpu.seamlessloopmobile.model.PlaylistDao
 import com.cpu.seamlessloopmobile.data.MusicRepository
 import com.cpu.seamlessloopmobile.data.SettingsManager
+import com.cpu.seamlessloopmobile.data.ThemePreference
+import com.cpu.seamlessloopmobile.data.sync.ClearLocalSyncDataSelection
+import com.cpu.seamlessloopmobile.data.sync.GitHubAutoSyncScheduler
+import com.cpu.seamlessloopmobile.data.sync.GitHubSyncConfig
+import com.cpu.seamlessloopmobile.data.sync.GitHubSyncCoordinator
+import com.cpu.seamlessloopmobile.data.sync.SharedPreferencesGitHubSyncStore
+import com.cpu.seamlessloopmobile.data.sync.SyncDataManagementRepository
+import com.cpu.seamlessloopmobile.data.sync.SyncDataManagementResult
+import com.cpu.seamlessloopmobile.data.sync.SyncOutcome
+import com.cpu.seamlessloopmobile.data.sync.SyncSnapshotSerializer
+import com.cpu.seamlessloopmobile.data.sync.github.GitHubContentsSyncBackend
+import com.cpu.seamlessloopmobile.data.sync.room.RoomSyncSnapshotStore
+import com.cpu.seamlessloopmobile.data.sync.room.SharedPreferencesPlaylistIdMapper
 import com.cpu.seamlessloopmobile.jni.LoopPoint
 import com.cpu.seamlessloopmobile.jni.NativeAudio
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -38,6 +52,8 @@ enum class PlayMode {
 sealed class MusicUiState {
     object Home : MusicUiState()
     object Search : MusicUiState()
+    object Settings : MusicUiState()
+    object PlaybackStats : MusicUiState()
     
     // 一级分类展开
     @Deprecated("Use Tab navigation instead")
@@ -68,10 +84,591 @@ class MainViewModel(
     lateinit var selection: SelectionViewModel
     lateinit var playlist: PlaylistViewModel
     lateinit var loopDetection: LoopDetectionViewModel
+
+    // GitHub 同步基础设施（由工厂注入）
+    lateinit var githubSyncStore: SharedPreferencesGitHubSyncStore
+    lateinit var playlistIdMapper: SharedPreferencesPlaylistIdMapper
+    lateinit var roomSyncSnapshotStore: RoomSyncSnapshotStore
+    lateinit var localSyncDataManagementRepository: SyncDataManagementRepository
+
+    /** 数据管理仓库工厂 —— 由 [MainViewModelFactory] 注入，每次调用传入最新 [GitHubSyncConfig]。 */
+    lateinit var syncDataManagementRepositoryFactory: (GitHubSyncConfig) -> SyncDataManagementRepository
+
+    /** 自动同步调度器（由工厂注入）。 */
+    lateinit var githubAutoSyncScheduler: GitHubAutoSyncScheduler
+
     private var settingsManager: SettingsManager? = null
 
     init {
         // 莱芙现在变聪明了，不在构造函数里乱连天线了喵！
+    }
+
+    // ===================================================================
+    // GitHub 同步 UI 状态 & 操作
+    // ===================================================================
+
+    private val _githubSyncState = MutableLiveData(GitHubSyncUiState())
+    val githubSyncState: LiveData<GitHubSyncUiState> = _githubSyncState
+
+    private fun updateGitHubSyncState(
+        transform: (GitHubSyncUiState) -> GitHubSyncUiState
+    ) {
+        val current = _githubSyncState.value ?: GitHubSyncUiState()
+        _githubSyncState.value = transform(current)
+    }
+
+    /**
+     * 从持久化存储加载 GitHub 同步配置状态。
+     * 被 [MainViewModelFactory] 在初始化后立即调用。
+     */
+    fun loadGitHubSyncState() {
+        viewModelScope.launch {
+            val config = githubSyncStore.getConfig()
+            val token = githubSyncStore.getToken()
+            val hasUsableToken = !token.isNullOrBlank()
+            val lastSyncTime = githubSyncStore.getLastSyncTime()
+            val isAutoSyncEnabled = githubSyncStore.isAutoSyncEnabled()
+            val current = _githubSyncState.value ?: GitHubSyncUiState()
+            _githubSyncState.postValue(current.copy(
+                isConfigured = config != null,
+                hasToken = hasUsableToken,
+                owner = config?.owner ?: "",
+                repo = config?.repo ?: "",
+                branch = config?.branch ?: "main",
+                path = config?.path ?: "seamless-loop/sync.json",
+                lastSyncTime = lastSyncTime,
+                isAutoSyncEnabled = isAutoSyncEnabled
+            ))
+            // 根据已持久化的状态同步 WorkManager 调度
+            githubAutoSyncScheduler.reconcile(isAutoSyncEnabled && config != null && hasUsableToken)
+        }
+    }
+
+    /**
+     * 保存 GitHub 同步配置及 token。
+     * 允许 token 留空，此时保留已存储的 token（如有）。
+     * @param token 新 token；空字符串表示不更改
+     * @param owner 仓库所有者
+     * @param repo 仓库名
+     * @param branch 分支名
+     * @param path 文件路径
+     */
+    fun saveGitHubSyncConfig(
+        token: String,
+        owner: String,
+        repo: String,
+        branch: String,
+        path: String
+    ) {
+        viewModelScope.launch {
+            val normalizedOwner = owner.trim()
+            val normalizedRepo = repo.trim()
+            val normalizedBranch = branch.trim()
+            val normalizedPath = path.trim()
+
+            if (normalizedOwner.isBlank() ||
+                normalizedRepo.isBlank() ||
+                normalizedBranch.isBlank() ||
+                normalizedPath.isBlank()
+            ) {
+                _githubSyncState.postValue(
+                    _githubSyncState.value?.copy(errorMessage = "请填写完整的仓库信息")
+                )
+                return@launch
+            }
+
+            // token 为空时尝试保留现有 token
+            val effectiveToken = if (token.isBlank()) {
+                githubSyncStore.getToken()
+            } else {
+                token.trim()
+            }
+
+            if (effectiveToken == null) {
+                _githubSyncState.postValue(
+                    _githubSyncState.value?.copy(errorMessage = "请先填写 GitHub Token")
+                )
+                return@launch
+            }
+
+            githubSyncStore.saveToken(effectiveToken)
+            githubSyncStore.saveConfig(
+                GitHubSyncConfig(
+                    owner = normalizedOwner,
+                    repo = normalizedRepo,
+                    branch = normalizedBranch,
+                    path = normalizedPath
+                )
+            )
+            _githubSyncState.postValue(
+                _githubSyncState.value?.copy(
+                    statusMessage = "GitHub 同步配置已保存",
+                    errorMessage = ""
+                )
+            )
+            loadGitHubSyncState()
+            // 如果自动同步之前已开启，确保调度器在新配置下继续运行
+            if (githubSyncStore.isAutoSyncEnabled()) {
+                githubAutoSyncScheduler.reconcile(true)
+            }
+        }
+    }
+
+    /** 清除 GitHub 同步配置和 token，同时关闭自动同步并取消调度。 */
+    fun clearGitHubSyncConfig() {
+        viewModelScope.launch {
+            githubSyncStore.clearToken()
+            githubSyncStore.clearConfig()
+            githubSyncStore.setAutoSyncEnabled(false)
+            githubAutoSyncScheduler.cancel()
+            _githubSyncState.postValue(
+                GitHubSyncUiState(statusMessage = "GitHub 同步配置已清除")
+            )
+        }
+    }
+
+    /**
+     * 设置自动同步开关。
+     *
+     * 开启时会检查配置和 token 是否就绪，不满足条件则拒绝开启并设置错误信息。
+     * 关闭时取消 WorkManager 调度。
+     */
+    fun setGitHubAutoSyncEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            if (enabled) {
+                // 开启前校验配置和 token 是否就绪
+                val config = githubSyncStore.getConfig()
+                val token = githubSyncStore.getToken()
+                if (config == null || token.isNullOrBlank()) {
+                    _githubSyncState.postValue(
+                        _githubSyncState.value?.copy(
+                            isAutoSyncEnabled = false,
+                            errorMessage = "请先配置 GitHub Token 和仓库"
+                        )
+                    )
+                    return@launch
+                }
+            }
+
+            githubSyncStore.setAutoSyncEnabled(enabled)
+            githubAutoSyncScheduler.reconcile(enabled)
+            _githubSyncState.postValue(
+                _githubSyncState.value?.copy(isAutoSyncEnabled = enabled, errorMessage = "")
+            )
+        }
+    }
+
+    /** 执行一次 GitHub 同步。 */
+    fun runGitHubSync() {
+        viewModelScope.launch {
+            _githubSyncState.postValue(
+                _githubSyncState.value?.copy(
+                    isSyncing = true,
+                    statusMessage = "正在同步 GitHub 数据...",
+                    errorMessage = ""
+                )
+            )
+
+            val config = githubSyncStore.getConfig()
+            val token = githubSyncStore.getToken()
+
+            if (config == null || token == null) {
+                _githubSyncState.postValue(
+                    _githubSyncState.value?.copy(
+                        isSyncing = false,
+                        errorMessage = "请先配置 GitHub Token 和仓库"
+                    )
+                )
+                return@launch
+            }
+
+            val backend = GitHubContentsSyncBackend(
+                config = config,
+                tokenProvider = githubSyncStore,
+                serializer = SyncSnapshotSerializer()
+            )
+
+            val coordinator = GitHubSyncCoordinator(
+                backend = backend,
+                snapshotStore = roomSyncSnapshotStore,
+                metadataStore = githubSyncStore
+            )
+
+            val outcome = try {
+                coordinator.syncNow()
+            } catch (e: Exception) {
+                _githubSyncState.postValue(
+                    _githubSyncState.value?.copy(
+                        isSyncing = false,
+                        errorMessage = "GitHub 同步失败：${e.message ?: "未知错误"}"
+                    )
+                )
+                return@launch
+            }
+
+            when (outcome) {
+                is SyncOutcome.Success -> {
+                    val lastSyncTime = githubSyncStore.getLastSyncTime()
+                    _githubSyncState.postValue(
+                        _githubSyncState.value?.copy(
+                            isSyncing = false,
+                            statusMessage = "GitHub 同步完成",
+                            errorMessage = "",
+                            lastSyncTime = lastSyncTime,
+                            lastReport = outcome.report
+                        )
+                    )
+                }
+                is SyncOutcome.Failure -> {
+                    _githubSyncState.postValue(
+                        _githubSyncState.value?.copy(
+                            isSyncing = false,
+                            errorMessage = outcome.message
+                        )
+                    )
+                }
+                is SyncOutcome.LocalMutationDuringSync -> {
+                    _githubSyncState.postValue(
+                        _githubSyncState.value?.copy(
+                            isSyncing = false,
+                            errorMessage = "同步期间本地数据发生变化，请重试"
+                        )
+                    )
+                }
+                is SyncOutcome.Cancelled -> {
+                    _githubSyncState.postValue(
+                        _githubSyncState.value?.copy(
+                            isSyncing = false,
+                            statusMessage = "GitHub 同步已取消"
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    // ===================================================================
+    // 同步数据管理操作
+    // ===================================================================
+
+    /**
+     * 构建 [SyncDataManagementRepository] 实例。
+     * 如果 GitHub 未配置（无 config 或 token），
+     * 设置 managementErrorMessage 并返回 null。
+     */
+    private suspend fun buildManagementRepository(): SyncDataManagementRepository? {
+        val config = githubSyncStore.getConfig()
+        val token = githubSyncStore.getToken()
+        if (config == null || token == null) {
+            updateGitHubSyncState {
+                it.copy(managementErrorMessage = "请先配置 GitHub Token 和仓库")
+            }
+            return null
+        }
+        return try {
+            syncDataManagementRepositoryFactory(config)
+        } catch (e: Exception) {
+            updateGitHubSyncState {
+                it.copy(managementErrorMessage = "创建仓库实例失败：${e.message ?: "未知错误"}")
+            }
+            null
+        }
+    }
+
+    /** 刷新数据管理预览。 */
+    fun refreshSyncDataManagementPreview() {
+        viewModelScope.launch {
+            updateGitHubSyncState {
+                it.copy(
+                    isManagementLoading = true,
+                    isManagementOperationRunning = false,
+                    managementErrorMessage = ""
+                )
+            }
+
+            val repo = buildManagementRepository() ?: run {
+                updateGitHubSyncState { it.copy(isManagementLoading = false) }
+                return@launch
+            }
+
+            try {
+                when (val result = repo.preview()) {
+                    is SyncDataManagementResult.Success -> {
+                        updateGitHubSyncState {
+                            it.copy(
+                                isManagementLoading = false,
+                                isManagementOperationRunning = false,
+                                managementPreview = result.data,
+                                managementStatusMessage = "数据预览已更新",
+                                managementErrorMessage = ""
+                            )
+                        }
+                    }
+                    is SyncDataManagementResult.Failure -> {
+                        updateGitHubSyncState {
+                            it.copy(
+                                isManagementLoading = false,
+                                isManagementOperationRunning = false,
+                                managementErrorMessage = result.message
+                            )
+                        }
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                updateGitHubSyncState {
+                    it.copy(
+                        isManagementLoading = false,
+                        isManagementOperationRunning = false,
+                        managementErrorMessage = "预览失败：${e.message ?: "未知错误"}"
+                    )
+                }
+            }
+        }
+    }
+
+    /** 仅在云端同步文件不存在时，用本机数据创建初始云端快照。 */
+    fun seedCloudFromLocal() {
+        viewModelScope.launch {
+            updateGitHubSyncState {
+                it.copy(
+                    isManagementOperationRunning = true,
+                    isManagementLoading = false,
+                    managementErrorMessage = ""
+                )
+            }
+
+            val repo = buildManagementRepository() ?: run {
+                updateGitHubSyncState { it.copy(isManagementOperationRunning = false) }
+                return@launch
+            }
+
+            try {
+                when (val result = repo.seedCloudFromLocal()) {
+                    is SyncDataManagementResult.Success -> {
+                        val lastSyncTime = githubSyncStore.getLastSyncTime()
+                        updateGitHubSyncState {
+                            it.copy(
+                                isManagementOperationRunning = false,
+                                isManagementLoading = false,
+                                managementStatusMessage = "已用本机数据创建云端同步文件，可刷新数据预览",
+                                statusMessage = "已创建初始云端同步文件",
+                                lastSyncTime = lastSyncTime,
+                                lastReport = result.data,
+                                managementErrorMessage = ""
+                            )
+                        }
+                    }
+                    is SyncDataManagementResult.Failure -> {
+                        updateGitHubSyncState {
+                            it.copy(
+                                isManagementOperationRunning = false,
+                                isManagementLoading = false,
+                                managementErrorMessage = result.message
+                            )
+                        }
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                updateGitHubSyncState {
+                    it.copy(
+                        isManagementOperationRunning = false,
+                        isManagementLoading = false,
+                        managementErrorMessage = "初始化云端失败：${e.message ?: "未知错误"}"
+                    )
+                }
+            }
+        }
+    }
+
+    /** 删除云端同步快照文件。 */
+    fun deleteCloudSnapshot() {
+        viewModelScope.launch {
+            updateGitHubSyncState {
+                it.copy(
+                    isManagementOperationRunning = true,
+                    isManagementLoading = false,
+                    managementErrorMessage = ""
+                )
+            }
+
+            val repo = buildManagementRepository() ?: run {
+                updateGitHubSyncState { it.copy(isManagementOperationRunning = false) }
+                return@launch
+            }
+
+            try {
+                when (val result = repo.deleteCloudSnapshot()) {
+                    is SyncDataManagementResult.Success -> {
+                        updateGitHubSyncState {
+                            it.copy(
+                                isManagementOperationRunning = false,
+                                isManagementLoading = false,
+                                managementStatusMessage = "云端同步文件已删除，可刷新数据预览",
+                                statusMessage = "云端同步文件已删除",
+                                lastReport = null,
+                                lastSyncTime = 0L,
+                                managementPreview = it.managementPreview?.copy(
+                                    cloud = com.cpu.seamlessloopmobile.data.sync.CloudSyncDataPreview(exists = false)
+                                ),
+                                managementErrorMessage = ""
+                            )
+                        }
+                    }
+                    is SyncDataManagementResult.Failure -> {
+                        updateGitHubSyncState {
+                            it.copy(
+                                isManagementOperationRunning = false,
+                                isManagementLoading = false,
+                                managementErrorMessage = result.message
+                            )
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                updateGitHubSyncState {
+                    it.copy(
+                        isManagementOperationRunning = false,
+                        isManagementLoading = false,
+                        managementErrorMessage = "删除云端快照失败：${e.message ?: "未知错误"}"
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * 清除本机同步相关数据。
+     * @param clearPlaylists 是否清除歌单
+     * @param clearLoopPoints 是否清除循环点
+     * @param clearRatings 是否清除评分
+     * @param clearListenStats 是否清除播放统计
+     */
+    fun clearLocalSyncData(
+        clearPlaylists: Boolean,
+        clearLoopPoints: Boolean,
+        clearRatings: Boolean,
+        clearListenStats: Boolean
+    ) {
+        viewModelScope.launch {
+            updateGitHubSyncState {
+                it.copy(
+                    isManagementOperationRunning = true,
+                    isManagementLoading = false,
+                    managementErrorMessage = ""
+                )
+            }
+
+            val selection = ClearLocalSyncDataSelection(
+                clearPlaylists = clearPlaylists,
+                clearLoopPoints = clearLoopPoints,
+                clearRatings = clearRatings,
+                clearListenStats = clearListenStats
+            )
+
+            try {
+                when (val result = localSyncDataManagementRepository.clearLocalSyncData(selection)) {
+                    is SyncDataManagementResult.Success -> {
+                        val currentPreview = _githubSyncState.value?.managementPreview
+                        val updatedPreview = currentPreview?.copy(local = result.data)
+                        updateGitHubSyncState {
+                            it.copy(
+                                isManagementOperationRunning = false,
+                                isManagementLoading = false,
+                                managementStatusMessage = "所选本机数据已清除",
+                                managementPreview = updatedPreview,
+                                managementErrorMessage = ""
+                            )
+                        }
+                    }
+                    is SyncDataManagementResult.Failure -> {
+                        updateGitHubSyncState {
+                            it.copy(
+                                isManagementOperationRunning = false,
+                                isManagementLoading = false,
+                                managementErrorMessage = result.message
+                            )
+                        }
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                updateGitHubSyncState {
+                    it.copy(
+                        isManagementOperationRunning = false,
+                        isManagementLoading = false,
+                        managementErrorMessage = "清除失败：${e.message ?: "未知错误"}"
+                    )
+                }
+            }
+        }
+    }
+
+    /** Loads local playback-stat source device data for the data-management UI. */
+    fun loadPlaybackStatsSourceDevices() {
+        viewModelScope.launch {
+            updateGitHubSyncState {
+                it.copy(
+                    isManagementLoading = true,
+                    isManagementOperationRunning = false,
+                    managementStatusMessage = "",
+                    managementErrorMessage = ""
+                )
+            }
+            when (val result = localSyncDataManagementRepository.getLocalPlaybackStatsSourceDevices()) {
+                is SyncDataManagementResult.Success -> updateGitHubSyncState {
+                    it.copy(
+                        isManagementLoading = false,
+                        playbackStatsSourceDevices = result.data,
+                        managementStatusMessage = "播放统计来源已更新",
+                        managementErrorMessage = ""
+                    )
+                }
+                is SyncDataManagementResult.Failure -> updateGitHubSyncState {
+                    it.copy(
+                        isManagementLoading = false,
+                        managementStatusMessage = "",
+                        managementErrorMessage = result.message
+                    )
+                }
+            }
+        }
+    }
+
+    /** Deletes selected local playback-stat source histories using generation tombstones. */
+    fun deletePlaybackStatsSourceDeviceHistories(deviceIds: Set<String>) {
+        viewModelScope.launch {
+            updateGitHubSyncState {
+                it.copy(
+                    isManagementOperationRunning = true,
+                    isManagementLoading = false,
+                    managementStatusMessage = "",
+                    managementErrorMessage = ""
+                )
+            }
+            when (val result = localSyncDataManagementRepository
+                .deleteLocalPlaybackStatsSourceDeviceHistories(deviceIds)) {
+                is SyncDataManagementResult.Success -> updateGitHubSyncState {
+                    it.copy(
+                        isManagementOperationRunning = false,
+                        playbackStatsSourceDevices = result.data,
+                        managementStatusMessage = "所选播放统计来源记录已删除",
+                        managementErrorMessage = ""
+                    )
+                }
+                is SyncDataManagementResult.Failure -> updateGitHubSyncState {
+                    it.copy(
+                        isManagementOperationRunning = false,
+                        managementStatusMessage = "",
+                        managementErrorMessage = result.message
+                    )
+                }
+            }
+        }
     }
 
     fun startObservation() {
@@ -115,6 +712,8 @@ class MainViewModel(
         _playMode.value = savedMode
         isSeamlessLoopEnabled.value = manager.isSeamlessLoopEnabled
         _seamlessLoopCountLimit.value = manager.seamlessLoopCountLimit
+        _themePreference.value = manager.themePreference
+        _buttonHapticFeedbackEnabled.value = manager.buttonHapticFeedbackEnabled
         
         // 给底层发个信号，告诉它当前的初始模式，也把状态机的模式同步好喵！
         val bundle = android.os.Bundle().apply {
@@ -138,10 +737,26 @@ class MainViewModel(
     private val _seamlessLoopCountLimit = MutableLiveData(0)
     val seamlessLoopCountLimit: LiveData<Int> = _seamlessLoopCountLimit
 
+    private val _themePreference = MutableLiveData(ThemePreference.SYSTEM)
+    val themePreference: LiveData<ThemePreference> = _themePreference
+
+    private val _buttonHapticFeedbackEnabled = MutableLiveData(true)
+    val buttonHapticFeedbackEnabled: LiveData<Boolean> = _buttonHapticFeedbackEnabled
+
     fun setSeamlessLoopCountLimit(limit: Int) {
         val safeLimit = limit.coerceIn(0, SettingsManager.MAX_SEAMLESS_LOOP_COUNT_LIMIT)
         _seamlessLoopCountLimit.value = safeLimit
         settingsManager?.seamlessLoopCountLimit = safeLimit
+    }
+
+    fun setThemePreference(preference: ThemePreference) {
+        _themePreference.value = preference
+        settingsManager?.themePreference = preference
+    }
+
+    fun setButtonHapticFeedbackEnabled(enabled: Boolean) {
+        _buttonHapticFeedbackEnabled.value = enabled
+        settingsManager?.buttonHapticFeedbackEnabled = enabled
     }
 
     private fun restorePlaybackSession() {
@@ -189,15 +804,8 @@ class MainViewModel(
     private val _isSearchPanelVisible = MutableLiveData(false)
     val isSearchPanelVisible: LiveData<Boolean> = _isSearchPanelVisible
 
-    private val _isSettingsPanelVisible = MutableLiveData(false)
-    val isSettingsPanelVisible: LiveData<Boolean> = _isSettingsPanelVisible
-
     fun setSearchPanelVisible(visible: Boolean) {
         _isSearchPanelVisible.value = visible
-    }
-
-    fun setSettingsPanelVisible(visible: Boolean) {
-        _isSettingsPanelVisible.value = visible
     }
 
     // --- 循环检测状态只读流代理喵 ---

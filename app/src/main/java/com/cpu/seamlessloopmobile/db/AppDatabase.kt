@@ -19,7 +19,7 @@ import androidx.room.TypeConverters
         PlaylistFolder::class, 
         PlayQueueItem::class
     ], 
-    version = 12, 
+    version = 13,
     exportSchema = false
 )
 @TypeConverters(DateConverter::class)

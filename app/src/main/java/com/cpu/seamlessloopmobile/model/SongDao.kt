@@ -48,6 +48,27 @@ interface SongDao {
     @Query("SELECT * FROM Songs WHERE FilePath LIKE :pathPrefix || '%'")
     suspend fun getSongsByPathPrefix(pathPrefix: String): List<Song>
 
+    // --- Sync 助手方法 ---
+
+    @Query("SELECT * FROM LoopPoints WHERE SongId = :songId LIMIT 1")
+    suspend fun getLoopPointBySongId(songId: Long): LoopPoint?
+
+    @Query("SELECT * FROM UserRatings WHERE SongId = :songId LIMIT 1")
+    suspend fun getUserRatingBySongId(songId: Long): UserRating?
+
+    @Transaction
+    @Query("""
+        SELECT * FROM Songs
+        WHERE FileName = :name
+          AND duration BETWEEN :minDuration AND :maxDuration
+          AND IsAbPartB = 0
+    """)
+    suspend fun getSongsByNameWithDurationRange(
+        name: String,
+        minDuration: Long,
+        maxDuration: Long
+    ): List<Song>
+
     // --- 关联表专用操作 ---
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -86,6 +107,12 @@ interface SongDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUserRatingsBatch(userRatings: List<UserRating>)
 
+    @Query("DELETE FROM LoopPoints")
+    suspend fun deleteAllLoopPoints(): Int
+
+    @Query("DELETE FROM UserRatings")
+    suspend fun deleteAllUserRatings(): Int
+
     // --- 基础增删改 (针对 Entity) ---
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -113,6 +140,10 @@ interface SongDao {
             mediaId = :mediaId,
             duration = :duration,
             TotalSamples = :totalSamples,
+            CoverPath = :coverPath,
+            MimeType = :mimeType,
+            SampleRateHz = :sampleRateHz,
+            BitrateKbps = :bitrateKbps,
             LastModified = :lastModified
         WHERE Id = :id
     """)
@@ -123,6 +154,10 @@ interface SongDao {
         mediaId: Long,
         duration: Long,
         totalSamples: Long,
+        coverPath: String?,
+        mimeType: String?,
+        sampleRateHz: Int?,
+        bitrateKbps: Int?,
         lastModified: Long
     ): Int
 
@@ -138,12 +173,26 @@ interface SongDao {
             TotalSamples = :total, 
             DisplayName = :displayName, 
             CoverPath = :coverPath, 
+            MimeType = :mimeType,
+            SampleRateHz = :sampleRateHz,
+            BitrateKbps = :bitrateKbps,
             ArtistId = :artistId, 
             AlbumId = :albumId,
             IsAbPartB = :isAbPartB
         WHERE Id = :id
     """)
-    suspend fun updateSongSyncFields(id: Long, total: Long, displayName: String?, coverPath: String?, artistId: Long?, albumId: Long?, isAbPartB: Boolean)
+    suspend fun updateSongSyncFields(
+        id: Long,
+        total: Long,
+        displayName: String?,
+        coverPath: String?,
+        mimeType: String?,
+        sampleRateHz: Int?,
+        bitrateKbps: Int?,
+        artistId: Long?,
+        albumId: Long?,
+        isAbPartB: Boolean
+    )
 
     @Transaction
     suspend fun updateSongsMetadataBatch(updates: List<SongMetadataUpdate>) {
@@ -156,6 +205,9 @@ interface SongDao {
                 total = update.total,
                 displayName = update.displayName,
                 coverPath = update.coverPath,
+                mimeType = update.mimeType,
+                sampleRateHz = update.sampleRateHz,
+                bitrateKbps = update.bitrateKbps,
                 artistId = update.artistId,
                 albumId = update.albumId,
                 isAbPartB = update.isAbPartB

@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.cpu.seamlessloopmobile.model.Folder
 import com.cpu.seamlessloopmobile.ui.components.common.CategoryListItem
 
@@ -27,7 +28,9 @@ fun CategoryScreen(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        state = listState
+        state = listState,
+        contentPadding = PaddingValues(top = 4.dp, bottom = 176.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         items(items) { folder ->
             val isSelected = selectedFolders.any { it.path == folder.path }

@@ -12,28 +12,45 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
-    primary = SeamlessLoopColors.PurpleAccent,
-    secondary = SeamlessLoopColors.TealAccent,
-    background = SeamlessLoopColors.DarkBgGradientStart,
-    surface = SeamlessLoopColors.ComponentDarkBg,
-    onPrimary = SeamlessLoopColors.White,
-    onBackground = SeamlessLoopColors.White,
-    onSurface = SeamlessLoopColors.White
+    primary = SeamlessLoopMaterialColors.Dark.Primary,
+    onPrimary = SeamlessLoopMaterialColors.Dark.OnPrimary,
+    primaryContainer = SeamlessLoopMaterialColors.Dark.PrimaryContainer,
+    onPrimaryContainer = SeamlessLoopMaterialColors.Dark.OnPrimaryContainer,
+    secondary = SeamlessLoopMaterialColors.Dark.Secondary,
+    onSecondary = SeamlessLoopMaterialColors.Dark.OnSecondary,
+    secondaryContainer = SeamlessLoopMaterialColors.Dark.SecondaryContainer,
+    onSecondaryContainer = SeamlessLoopMaterialColors.Dark.OnSecondaryContainer,
+    background = SeamlessLoopMaterialColors.Dark.Background,
+    onBackground = SeamlessLoopMaterialColors.Dark.OnBackground,
+    surface = SeamlessLoopMaterialColors.Dark.Surface,
+    onSurface = SeamlessLoopMaterialColors.Dark.OnSurface,
+    surfaceVariant = SeamlessLoopMaterialColors.Dark.SurfaceVariant,
+    onSurfaceVariant = SeamlessLoopMaterialColors.Dark.OnSurfaceVariant,
+    outlineVariant = SeamlessLoopMaterialColors.Dark.OutlineVariant,
+    error = SeamlessLoopMaterialColors.Dark.Error,
+    onError = SeamlessLoopMaterialColors.Dark.OnError
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = SeamlessLoopColors.PurpleAccent,
-    secondary = SeamlessLoopColors.TealAccent,
-    background = SeamlessLoopColors.White,
-    surface = SeamlessLoopColors.White,
-    onPrimary = SeamlessLoopColors.White,
-    onBackground = SeamlessLoopColors.DarkBgGradientEnd,
-    onSurface = SeamlessLoopColors.DarkBgGradientEnd
+    primary = SeamlessLoopMaterialColors.Light.Primary,
+    onPrimary = SeamlessLoopMaterialColors.Light.OnPrimary,
+    primaryContainer = SeamlessLoopMaterialColors.Light.PrimaryContainer,
+    onPrimaryContainer = SeamlessLoopMaterialColors.Light.OnPrimaryContainer,
+    secondary = SeamlessLoopMaterialColors.Light.Secondary,
+    onSecondary = SeamlessLoopMaterialColors.Light.OnSecondary,
+    secondaryContainer = SeamlessLoopMaterialColors.Light.SecondaryContainer,
+    onSecondaryContainer = SeamlessLoopMaterialColors.Light.OnSecondaryContainer,
+    background = SeamlessLoopMaterialColors.Light.Background,
+    onBackground = SeamlessLoopMaterialColors.Light.OnBackground,
+    surface = SeamlessLoopMaterialColors.Light.Surface,
+    onSurface = SeamlessLoopMaterialColors.Light.OnSurface,
+    surfaceVariant = SeamlessLoopMaterialColors.Light.SurfaceVariant,
+    onSurfaceVariant = SeamlessLoopMaterialColors.Light.OnSurfaceVariant,
+    outlineVariant = SeamlessLoopMaterialColors.Light.OutlineVariant,
+    error = SeamlessLoopMaterialColors.Light.Error,
+    onError = SeamlessLoopMaterialColors.Light.OnError
 )
 
-/**
- * 莱芙为 CPU 大人量身定制的主题系统包装喵！(๑•̀ㅂ•́)و✧
- */
 @Composable
 fun SeamlessLoopTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -41,16 +58,14 @@ fun SeamlessLoopTheme(
 ) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
     val view = LocalView.current
-    
+
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            // 设置状态栏与导航栏颜色喵，保持整体视觉高度统一！
             window.statusBarColor = colorScheme.background.toArgb()
             window.navigationBarColor = colorScheme.background.toArgb()
-            
+
             val windowInsetsController = WindowCompat.getInsetsController(window, view)
-            // 依据深浅色主题，灵动调整系统状态栏和导航栏文字的高亮模式喵 ^ㅅ^
             windowInsetsController.isAppearanceLightStatusBars = !darkTheme
             windowInsetsController.isAppearanceLightNavigationBars = !darkTheme
         }
@@ -58,6 +73,7 @@ fun SeamlessLoopTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
+        typography = SeamlessLoopTypography,
         content = content
     )
 }

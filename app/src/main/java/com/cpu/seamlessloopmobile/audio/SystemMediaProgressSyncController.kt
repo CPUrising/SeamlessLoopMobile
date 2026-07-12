@@ -27,7 +27,17 @@ internal class SystemMediaProgressSyncController(
     private val intervalMs: Long = 250L,
     private val onSyncTick: () -> Unit
 ) {
+    private var shouldDispatch: () -> Boolean = { true }
     private var syncJob: Job? = null
+
+    constructor(
+        scope: CoroutineScope,
+        intervalMs: Long = 250L,
+        shouldDispatch: () -> Boolean,
+        onSyncTick: () -> Unit
+    ) : this(scope, intervalMs, onSyncTick) {
+        this.shouldDispatch = shouldDispatch
+    }
 
     val isRunning: Boolean
         get() = syncJob?.isActive == true
@@ -48,11 +58,13 @@ internal class SystemMediaProgressSyncController(
         if (syncJob?.isActive == true) return
 
         syncJob = scope.launch {
-            // Sync once immediately after resume, then stay within the chosen 250ms budget.
+            // Sync once immediately after resume, then gate periodic ticks through shouldDispatch.
             onSyncTick()
             while (isActive) {
                 delay(intervalMs)
-                onSyncTick()
+                if (shouldDispatch()) {
+                    onSyncTick()
+                }
             }
         }
     }

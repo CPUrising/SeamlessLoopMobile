@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -14,11 +15,12 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.cpu.seamlessloopmobile.utils.rememberHapticClick
 import kotlinx.coroutines.delay
 
 /**
   * 精致通用的 TopAppBar 内嵌搜索栏组件喵！🔍
-  * 完美封装了 150ms 延迟自动聚焦逻辑，并支持自定义 placeholder 与样式重用喵。
+  * 支持自定义 placeholder，并可按需开启延迟自动聚焦。
   */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,12 +28,15 @@ fun TopAppBarSearchBar(
     value: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    placeholderText: String = "搜索歌曲、艺人、专辑..."
+    placeholderText: String = "搜索歌曲、艺人、专辑...",
+    autoFocus: Boolean = false
 ) {
     val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) {
-        delay(150) // 腾出少量时间给转场过渡动画喵
-        focusRequester.requestFocus()
+    LaunchedEffect(autoFocus) {
+        if (autoFocus) {
+            delay(150)
+            focusRequester.requestFocus()
+        }
     }
 
     TextField(
@@ -48,9 +53,16 @@ fun TopAppBarSearchBar(
                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
             )
         },
+        leadingIcon = {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+            )
+        },
         trailingIcon = {
             if (value.isNotEmpty()) {
-                IconButton(onClick = { onValueChange("") }) {
+                IconButton(onClick = rememberHapticClick { onValueChange("") }) {
                     Icon(
                         imageVector = Icons.Default.Clear,
                         contentDescription = "清除",

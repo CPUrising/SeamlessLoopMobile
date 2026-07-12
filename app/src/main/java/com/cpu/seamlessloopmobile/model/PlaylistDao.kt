@@ -25,6 +25,9 @@ interface PlaylistDao {
         val songCount: Int
     )
 
+    @Query("SELECT * FROM Playlists WHERE Id = :id LIMIT 1")
+    suspend fun getPlaylistById(id: Int): Playlist?
+
     @Query("SELECT * FROM Playlists WHERE Name = :name LIMIT 1")
     suspend fun getPlaylistByName(name: String): Playlist?
 
@@ -111,4 +114,7 @@ interface PlaylistDao {
 
     @Query("SELECT COUNT(*) FROM PlaylistItems JOIN Songs ON PlaylistItems.SongId = Songs.Id WHERE PlaylistItems.PlaylistId = :playlistId AND Songs.IsAbPartB = 0")
     suspend fun getSongCountInPlaylist(playlistId: Int): Int
+
+    @Query("DELETE FROM Playlists")
+    suspend fun deleteAllPlaylists(): Int
 }

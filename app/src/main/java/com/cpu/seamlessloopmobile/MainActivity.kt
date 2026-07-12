@@ -15,6 +15,8 @@ import com.cpu.seamlessloopmobile.viewmodel.MainViewModel
 import com.cpu.seamlessloopmobile.viewmodel.MainViewModelFactory
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.lifecycle.lifecycleScope
@@ -22,6 +24,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import com.cpu.seamlessloopmobile.ui.screen.MainScreen
 import com.cpu.seamlessloopmobile.data.SettingsManager
+import com.cpu.seamlessloopmobile.data.ThemePreference
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -59,7 +62,15 @@ class MainActivity : ComponentActivity() {
         viewModel.initSettings(settingsManager)
 
         setContent {
-            com.cpu.seamlessloopmobile.ui.theme.SeamlessLoopTheme {
+            val systemDarkTheme = isSystemInDarkTheme()
+            val themePreference by viewModel.themePreference.observeAsState(settingsManager.themePreference)
+            val darkTheme = when (themePreference) {
+                ThemePreference.SYSTEM -> systemDarkTheme
+                ThemePreference.LIGHT -> false
+                ThemePreference.DARK -> true
+            }
+
+            com.cpu.seamlessloopmobile.ui.theme.SeamlessLoopTheme(darkTheme = darkTheme) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -68,7 +79,10 @@ class MainActivity : ComponentActivity() {
                         viewModel = viewModel,
                         playSong = { song -> viewModel.playSong(song) },
                         onSyncPc = { dbPickerLauncher.launch("application/octet-stream") },
-                        onExportDatabase = { dbExportLauncher.launch(createDatabaseExportFileName()) }
+                        onExportDatabase = { dbExportLauncher.launch(createDatabaseExportFileName()) },
+                        isDarkTheme = darkTheme,
+                        themePreference = themePreference,
+                        onThemePreferenceChange = viewModel::setThemePreference
                     )
                 }
             }

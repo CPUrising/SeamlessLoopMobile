@@ -87,6 +87,28 @@ class SystemMediaProgressSyncControllerTest {
     }
 
     @Test
+    fun dispatchPredicateCanSuppressPeriodicTicksWithoutBreakingImmediateSync() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob() + testDispatcher)
+        val tickCount = AtomicInteger(0)
+        val controller = SystemMediaProgressSyncController(
+            scope = scope,
+            intervalMs = 20L,
+            shouldDispatch = { false }
+        ) {
+            tickCount.incrementAndGet()
+        }
+
+        controller.onPlaybackStateChanged(AudioPlayState.PLAYING)
+        waitUntil { tickCount.get() == 1 }
+        assertEquals(1, tickCount.get())
+
+        kotlinx.coroutines.delay(60L)
+        assertEquals("Predicate should suppress periodic ticks after the immediate sync", 1, tickCount.get())
+        controller.dispose()
+        scope.cancel()
+    }
+
+    @Test
     fun convertsFramesToPlaybackMillisecondsUsingSampleRateAtSampleTime() {
         assertEquals(1000L, framesToPlaybackPositionMs(positionFrames = 44100L, sampleRate = 44100))
         assertEquals(1500L, framesToPlaybackPositionMs(positionFrames = 72000L, sampleRate = 48000))

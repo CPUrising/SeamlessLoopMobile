@@ -57,6 +57,15 @@ data class SongEntity(
     @ColumnInfo(name = "CoverPath")
     val coverPath: String? = null,
 
+    @ColumnInfo(name = "MimeType")
+    val mimeType: String? = null,
+
+    @ColumnInfo(name = "SampleRateHz")
+    val sampleRateHz: Int? = null,
+
+    @ColumnInfo(name = "BitrateKbps")
+    val bitrateKbps: Int? = null,
+
     @ColumnInfo(name = "ArtistId")
     val artistId: Long? = null,
 

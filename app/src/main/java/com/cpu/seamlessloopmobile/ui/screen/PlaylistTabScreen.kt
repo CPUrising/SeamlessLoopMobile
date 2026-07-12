@@ -2,6 +2,7 @@ package com.cpu.seamlessloopmobile.ui.screen
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -46,7 +47,8 @@ fun PlaylistTabScreen(
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 80.dp)
+        contentPadding = PaddingValues(top = 4.dp, bottom = 176.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         // 1. 全部歌曲
         item {

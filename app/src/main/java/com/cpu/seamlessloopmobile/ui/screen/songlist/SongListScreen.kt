@@ -67,14 +67,14 @@ fun SongListScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "今天想在乐库里寻找什么曲子呢？",
+                        text = "搜索歌曲、艺人或专辑",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Medium
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "在这里打字，莱芙会自动为您防抖寻找喵 (´w｀)",
+                        text = "输入关键词即可开始搜索",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
@@ -88,22 +88,22 @@ fun SongListScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Text(
-                        text = "ㅠㅠ",
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                    Icon(
+                        imageVector = Icons.Default.SearchOff,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                        modifier = Modifier.size(48.dp)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "没有找到相符的歌曲喵",
+                        text = "没有找到匹配的内容",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "要不要换个关键词再试试看呢 (´w｀)...",
+                        text = "请尝试其他关键词",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -113,7 +113,8 @@ fun SongListScreen(
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     state = listState,
-                    contentPadding = PaddingValues(bottom = 80.dp) // 预留底部 MiniPlayer 避让距离喵
+                    contentPadding = PaddingValues(top = 4.dp, bottom = 176.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     items(songs, key = { it.id }) { song ->
                         val isPlaying = song.filePath == currentPlayingSongPath

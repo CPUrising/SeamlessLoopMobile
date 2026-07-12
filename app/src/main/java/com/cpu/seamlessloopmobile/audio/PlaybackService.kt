@@ -7,10 +7,15 @@ import androidx.media.session.MediaButtonReceiver
 import android.support.v4.media.session.MediaSessionCompat
 import com.cpu.seamlessloopmobile.model.Song
 import com.cpu.seamlessloopmobile.data.MusicRepository
+import com.cpu.seamlessloopmobile.data.stats.ListenStatsRepository
+import com.cpu.seamlessloopmobile.audio.stats.PlaybackStatsTracker
 import com.cpu.seamlessloopmobile.db.AppDatabase
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import android.content.Intent
 
@@ -29,6 +34,9 @@ class PlaybackService : MediaBrowserServiceCompat() {
     private var notify: Notify? = null
     private val queueManager = QueueManager()
     private lateinit var systemProgressSyncController: SystemMediaProgressSyncController
+    private lateinit var listenStatsRepository: ListenStatsRepository
+    private lateinit var playbackStatsTracker: PlaybackStatsTracker
+    private var statsFlushJob: Job? = null
 
     inner class PlaybackBinder : android.os.Binder() {
         fun getService(): PlaybackService = this@PlaybackService
@@ -119,6 +127,14 @@ class PlaybackService : MediaBrowserServiceCompat() {
             playbackManager?.updatePosition()
         }
 
+        listenStatsRepository = ListenStatsRepository.getInstance(this)
+        playbackStatsTracker = PlaybackStatsTracker(listenStatsRepository)
+        serviceScope.launch {
+            listenStatsRepository.clearEvents.collect {
+                playbackStatsTracker.onStatsCleared()
+            }
+        }
+
         playbackManager = PlaybackManager(
             context = this,
             coroutineScope = serviceScope,
@@ -128,6 +144,11 @@ class PlaybackService : MediaBrowserServiceCompat() {
             onPlaybackStatusChanged = { isPlaying, song ->
                 if (song != null) {
                     handlePlaybackStateChange(isPlaying, song)
+                }
+                // Track real listened time via wall-clock while PLAYING.
+                if (song != null) {
+                    playbackStatsTracker.onSongChanged(song)
+                    playbackStatsTracker.onPlayingChanged(isPlaying)
                 }
             }
             onSongCompleted = {
@@ -169,6 +190,21 @@ class PlaybackService : MediaBrowserServiceCompat() {
             // updating even when no Activity/MediaControlManager is connected.
             manager.state.collect { state ->
                 systemProgressSyncController.onPlaybackStateChanged(state)
+
+                // Manage periodic stats flush (~15s while playing).
+                if (state == AudioPlayState.PLAYING) {
+                    if (statsFlushJob?.isActive != true && playbackStatsTracker.shouldFlushPeriodically()) {
+                        statsFlushJob = serviceScope.launch {
+                            while (isActive) {
+                                delay(15_000L)
+                                playbackStatsTracker.flushPeriodic()
+                            }
+                        }
+                    }
+                } else {
+                    statsFlushJob?.cancel()
+                    statsFlushJob = null
+                }
             }
         }
 
@@ -374,6 +410,9 @@ class PlaybackService : MediaBrowserServiceCompat() {
     }
 
     fun stopForegroundCompletely() {
+        statsFlushJob?.cancel()
+        statsFlushJob = null
+        playbackStatsTracker.flushFinal()
         systemProgressSyncController.onPlaybackStateChanged(AudioPlayState.IDLE)
         if (wakeLock?.isHeld == true) wakeLock?.release()
         audioFocusManager.abandonFocus()
@@ -451,6 +490,8 @@ class PlaybackService : MediaBrowserServiceCompat() {
     }
 
     override fun onDestroy() {
+        statsFlushJob?.cancel()
+        playbackStatsTracker.flushFinal()
         systemProgressSyncController.dispose()
         if (wakeLock?.isHeld == true) wakeLock?.release()
         headsetPlugReceiver.unregister(this)

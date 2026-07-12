@@ -11,3 +11,10 @@
 .cxx
 local.properties
 music_test
+.slim/deepwork/
+.codegraph/
+.ignore
+temp/
+app/src/main/cpp/loopfinder/.vs/
+app/src/main/cpp/loopfinder/build/
+run - 副本.bat

@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalInspectionMode
 import com.cpu.seamlessloopmobile.jni.NativeAudio
 import com.cpu.seamlessloopmobile.model.Song
-import com.cpu.seamlessloopmobile.ui.theme.SeamlessLoopColors
+import com.cpu.seamlessloopmobile.ui.theme.SeamlessLoopPlayerColors
 
 /**
  * 循环微调面板，已完美融入 CPU 大人的 SeamlessLoopTheme 主题系统喵！(๑•̀ㅂ•́)و✧
@@ -48,64 +48,82 @@ fun FineTunePage(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(2.dp))
 
         TuneSectionBox(
             label = "循环起点 (A)",
             samples = tempLoopStart,
-            accentColor = SeamlessLoopColors.PointAccentA,
+            accentColor = SeamlessLoopPlayerColors.PointAccentA,
             onValueChange = onStartValueChange,
             onAdjustMs = onStartAdjustMs,
             onEditClick = { onEditClick(true) }
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
         TuneSectionBox(
             label = "循环终点 (B)",
             samples = tempLoopEnd,
-            accentColor = SeamlessLoopColors.PointAccentB,
+            accentColor = SeamlessLoopPlayerColors.PointAccentB,
             onValueChange = onEndValueChange,
             onAdjustMs = onEndAdjustMs,
             onEditClick = { onEditClick(false) }
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         // --- 自动检测区域喵 ---
         if (isDetecting) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(24.dp),
-                color = SeamlessLoopColors.PurpleAccent,
-                strokeWidth = 2.dp
-            )
-            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.height(42.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    color = SeamlessLoopPlayerColors.Primary,
+                    strokeWidth = 2.dp
+                )
+                Text(
+                    text = "正在探测循环点",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = SeamlessLoopPlayerColors.SecondaryText
+                )
+            }
         } else {
             OutlinedButton(
                 onClick = onDetectClick,
-                modifier = Modifier.fillMaxWidth().height(36.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, SeamlessLoopColors.PurpleAccent.copy(alpha = 0.5f)),
-                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.fillMaxWidth().height(42.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, SeamlessLoopPlayerColors.Primary.copy(alpha = 0.5f)),
+                shape = RoundedCornerShape(10.dp),
                 contentPadding = PaddingValues(0.dp)
             ) {
-                Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = SeamlessLoopColors.PurpleAccent, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.size(4.dp))
-                Text("自动探测循环点", color = SeamlessLoopColors.PurpleAccent, fontSize = 12.sp)
+                Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = SeamlessLoopPlayerColors.Primary, modifier = Modifier.size(17.dp))
+                Spacer(modifier = Modifier.size(6.dp))
+                Text(
+                    text = "自动探测循环点",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = SeamlessLoopPlayerColors.Primary
+                )
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         Button(
             onClick = onApplyAndListen,
-            modifier = Modifier.fillMaxWidth().height(40.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = SeamlessLoopColors.ButtonDarkBg),
-            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.fillMaxWidth().height(42.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = SeamlessLoopPlayerColors.Control),
+            shape = RoundedCornerShape(10.dp),
             contentPadding = PaddingValues(0.dp)
         ) {
-            Icon(Icons.Default.Hearing, contentDescription = null, tint = SeamlessLoopColors.White, modifier = Modifier.size(18.dp))
-            Spacer(modifier = Modifier.size(4.dp))
-            Text("应用并试听", color = SeamlessLoopColors.White, fontSize = 13.sp)
+            Icon(Icons.Default.Hearing, contentDescription = null, tint = SeamlessLoopPlayerColors.PrimaryText, modifier = Modifier.size(17.dp))
+            Spacer(modifier = Modifier.size(6.dp))
+            Text(
+                text = "应用并试听",
+                style = MaterialTheme.typography.labelLarge,
+                color = SeamlessLoopPlayerColors.PrimaryText
+            )
         }
     }
 }
@@ -125,41 +143,41 @@ fun TuneSectionBox(
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = SeamlessLoopColors.DarkBgGradientStart.copy(alpha = 0.5f),
+        color = SeamlessLoopPlayerColors.Panel.copy(alpha = 0.5f),
         shape = RoundedCornerShape(10.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, SeamlessLoopColors.White.copy(alpha = 0.1f))
+        border = androidx.compose.foundation.BorderStroke(1.dp, SeamlessLoopPlayerColors.PrimaryText.copy(alpha = 0.1f))
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    label,
-                    color = SeamlessLoopColors.LightGray,
-                    fontSize = 11.sp,
-                    modifier = Modifier.align(Alignment.CenterStart)
-                )
+            Text(
+                text = label,
+                color = SeamlessLoopPlayerColors.SecondaryText,
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(2.dp))
 
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .clickable { onEditClick() },
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        samples.toString(),
-                        color = accentColor,
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        String.format(java.util.Locale.US, "%.3fs", seconds),
-                        color = SeamlessLoopColors.Gray,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 64.dp)
+                    .clickable { onEditClick() },
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = samples.toString(),
+                    color = accentColor,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = String.format(java.util.Locale.US, "%.3fs", seconds),
+                    color = SeamlessLoopPlayerColors.TertiaryText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
             }
 
             HorizontalDivider(
@@ -202,15 +220,27 @@ fun TuneSectionBox(
 
 @Composable
 fun TuneGridButton(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Surface(
+    Box(
         modifier = modifier
-            .height(30.dp)
+            .height(44.dp)
             .clickable { onClick() },
-        color = SeamlessLoopColors.ComponentDarkBg,
-        shape = RoundedCornerShape(4.dp)
+        contentAlignment = Alignment.Center
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            Text(text, color = SeamlessLoopColors.LightGray, fontSize = 10.sp, fontWeight = FontWeight.Normal)
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(38.dp),
+            color = SeamlessLoopPlayerColors.Control,
+            shape = RoundedCornerShape(7.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelMedium,
+                color = SeamlessLoopPlayerColors.SecondaryText,
+                fontWeight = FontWeight.Medium
+            )
+            }
         }
     }
 }
@@ -219,7 +249,7 @@ fun TuneGridButton(text: String, modifier: Modifier = Modifier, onClick: () -> U
 @Composable
 @Suppress("SdCardPath")
 fun FineTunePagePreview() {
-    Box(modifier = Modifier.background(Color(0xFF1E1E2E))) {
+    Box(modifier = Modifier.background(SeamlessLoopPlayerColors.GradientStart)) {
         FineTunePage(
             song = Song(
                 id = 1L,

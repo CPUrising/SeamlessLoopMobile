@@ -22,7 +22,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.cpu.seamlessloopmobile.jni.LoopPoint
 import com.cpu.seamlessloopmobile.jni.NativeAudio
-import com.cpu.seamlessloopmobile.ui.theme.SeamlessLoopColors
+import com.cpu.seamlessloopmobile.ui.theme.SeamlessLoopPlayerColors
+import com.cpu.seamlessloopmobile.utils.rememberHapticClick
 import java.util.Locale
 
 /**
@@ -47,7 +48,7 @@ fun LoopCandidatesDialog(
                 .fillMaxWidth(0.92f)
                 .fillMaxHeight(0.7f),
             shape = RoundedCornerShape(20.dp),
-            color = SeamlessLoopColors.DarkBgGradientStart,
+            color = SeamlessLoopPlayerColors.Panel,
             tonalElevation = 8.dp,
             shadowElevation = 16.dp
         ) {
@@ -61,23 +62,23 @@ fun LoopCandidatesDialog(
                 ) {
                     Text(
                         text = "循环点候选列表",
-                        color = SeamlessLoopColors.White,
+                        color = SeamlessLoopPlayerColors.PrimaryText,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f)
                     )
-                    IconButton(onClick = onDismiss) {
+                    IconButton(onClick = rememberHapticClick(onClick = onDismiss)) {
                         Icon(
                             Icons.Default.Close,
                             contentDescription = "关闭",
-                            tint = SeamlessLoopColors.Gray
+                            tint = SeamlessLoopPlayerColors.Inactive
                         )
                     }
                 }
 
                 HorizontalDivider(
                     thickness = 1.dp,
-                    color = SeamlessLoopColors.White.copy(alpha = 0.08f),
+                    color = SeamlessLoopPlayerColors.PrimaryText.copy(alpha = 0.08f),
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
 
@@ -101,7 +102,7 @@ fun LoopCandidatesDialog(
 
                 HorizontalDivider(
                     thickness = 1.dp,
-                    color = SeamlessLoopColors.White.copy(alpha = 0.08f),
+                    color = SeamlessLoopPlayerColors.PrimaryText.copy(alpha = 0.08f),
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
 
@@ -116,7 +117,7 @@ fun LoopCandidatesDialog(
                         onClick = onReanalyze,
                         border = androidx.compose.foundation.BorderStroke(
                             1.dp,
-                            SeamlessLoopColors.PurpleAccent.copy(alpha = 0.6f)
+                            SeamlessLoopPlayerColors.Primary.copy(alpha = 0.6f)
                         ),
                         shape = RoundedCornerShape(10.dp),
                         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)
@@ -124,13 +125,13 @@ fun LoopCandidatesDialog(
                         Icon(
                             Icons.Default.Refresh,
                             contentDescription = null,
-                            tint = SeamlessLoopColors.PurpleAccent,
+                            tint = SeamlessLoopPlayerColors.Primary,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             "重新探测",
-                            color = SeamlessLoopColors.PurpleAccent,
+                            color = SeamlessLoopPlayerColors.Primary,
                             fontSize = 13.sp
                         )
                     }
@@ -157,7 +158,7 @@ private fun LoopCandidateRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        color = SeamlessLoopColors.ComponentDarkBg,
+        color = SeamlessLoopPlayerColors.Control,
         shape = RoundedCornerShape(10.dp)
     ) {
         Row(
@@ -170,7 +171,7 @@ private fun LoopCandidateRow(
             Icon(
                 Icons.Default.PlayArrow,
                 contentDescription = "试听",
-                tint = SeamlessLoopColors.PurpleAccent,
+                tint = SeamlessLoopPlayerColors.Primary,
                 modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
@@ -180,18 +181,18 @@ private fun LoopCandidateRow(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = "候选 ${index + 1}",
-                        color = SeamlessLoopColors.White,
+                        color = SeamlessLoopPlayerColors.PrimaryText,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Surface(
                         shape = RoundedCornerShape(4.dp),
-                        color = SeamlessLoopColors.PurpleAccent.copy(alpha = 0.2f)
+                        color = SeamlessLoopPlayerColors.Primary.copy(alpha = 0.2f)
                     ) {
                         Text(
                             text = String.format(Locale.US, "%.1f%%", scorePercent),
-                            color = SeamlessLoopColors.PurpleAccent,
+                            color = SeamlessLoopPlayerColors.Primary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -205,7 +206,7 @@ private fun LoopCandidateRow(
                         "区间: %.3fs 至 %.3fs  (循环 %.3fs)",
                         startSeconds, endSeconds, durationSeconds
                     ),
-                    color = SeamlessLoopColors.Gray,
+                    color = SeamlessLoopPlayerColors.TertiaryText,
                     fontSize = 12.sp
                 )
                 Spacer(modifier = Modifier.height(2.dp))
@@ -215,7 +216,7 @@ private fun LoopCandidateRow(
                         "采样: %d 至 %d  (共 %d 帧)",
                         point.loopStart, point.loopEnd, framesCount
                     ),
-                    color = SeamlessLoopColors.Gray,
+                    color = SeamlessLoopPlayerColors.TertiaryText,
                     fontSize = 12.sp
                 )
             }

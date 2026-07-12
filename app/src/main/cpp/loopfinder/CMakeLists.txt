@@ -93,7 +93,12 @@ target_link_libraries(loopfinder PRIVATE
 
 find_package(OpenMP)
 if(OpenMP_CXX_FOUND)
-    target_link_libraries(loopfinder PRIVATE OpenMP::OpenMP_CXX)
+    if(BUILD_FOR_ANDROID)
+        target_compile_options(loopfinder PRIVATE -fopenmp=libomp)
+        target_link_options(loopfinder PRIVATE -fopenmp=libomp -static-openmp)
+    else()
+        target_link_libraries(loopfinder PRIVATE OpenMP::OpenMP_CXX)
+    endif()
 endif()
 
 if(BUILD_FOR_ANDROID)

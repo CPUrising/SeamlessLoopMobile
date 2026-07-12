@@ -21,7 +21,8 @@ import com.cpu.seamlessloopmobile.data.SettingsManager
 class LibraryViewModel(
     private val repository: com.cpu.seamlessloopmobile.data.MusicRepository,
     private val coroutineScope: kotlinx.coroutines.CoroutineScope,
-    private val settingsManager: SettingsManager? = null
+    private val settingsManager: SettingsManager? = null,
+    private val onScanCompleted: suspend () -> Unit = {}
 ) {
 
     private val _syncStatus = MutableStateFlow<com.cpu.seamlessloopmobile.ui.state.DataUiState<String>>(com.cpu.seamlessloopmobile.ui.state.DataUiState.Success(""))
@@ -108,6 +109,7 @@ class LibraryViewModel(
                 val scanResult = withContext(Dispatchers.IO) {
                     repository.getInitialScannedSongs(context)
                 }
+                onScanCompleted()
                 val completionState = com.cpu.seamlessloopmobile.ui.state.DataUiState.Success(scanResult.statusMessage())
                 _syncStatus.value = completionState
                 delay(2000L)

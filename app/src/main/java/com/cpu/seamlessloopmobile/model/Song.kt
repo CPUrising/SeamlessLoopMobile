@@ -48,6 +48,9 @@ data class Song(
         isLoopEnabled: Boolean = true,
         rating: Int = 0,
         coverPath: String? = null,
+        mimeType: String? = null,
+        sampleRateHz: Int? = null,
+        bitrateKbps: Int? = null,
         isAbPartB: Boolean = false,
         loopCandidatesJson: String? = null,
         artist: String? = null,
@@ -65,6 +68,9 @@ data class Song(
             displayName = displayName,
             lastModified = lastModified,
             coverPath = coverPath,
+            mimeType = mimeType,
+            sampleRateHz = sampleRateHz,
+            bitrateKbps = bitrateKbps,
             artistId = artistId,
             albumId = albumId,
             duration = duration,
@@ -89,6 +95,9 @@ data class Song(
     val displayName get() = song.displayName ?: song.fileName
     val lastModified get() = song.lastModified
     val coverPath get() = song.coverPath ?: albumEntity?.coverPath ?: artistEntity?.coverPath
+    val mimeType get() = song.mimeType
+    val sampleRateHz get() = song.sampleRateHz
+    val bitrateKbps get() = song.bitrateKbps
     val duration get() = song.duration
     val isLoopEnabled get() = song.isLoopEnabled
     val isAbPartB get() = song.isAbPartB
@@ -119,6 +128,9 @@ data class Song(
         isLoopEnabled: Boolean = this.isLoopEnabled,
         rating: Int = this.rating,
         coverPath: String? = this.coverPath,
+        mimeType: String? = this.mimeType,
+        sampleRateHz: Int? = this.sampleRateHz,
+        bitrateKbps: Int? = this.bitrateKbps,
         isAbPartB: Boolean = this.isAbPartB,
         loopCandidatesJson: String? = this.loopCandidatesJson,
         artist: String? = this.artist,
@@ -139,6 +151,9 @@ data class Song(
         isLoopEnabled = isLoopEnabled,
         rating = rating,
         coverPath = coverPath,
+        mimeType = mimeType,
+        sampleRateHz = sampleRateHz,
+        bitrateKbps = bitrateKbps,
         isAbPartB = isAbPartB,
         loopCandidatesJson = loopCandidatesJson,
         artist = artist,
@@ -162,6 +177,9 @@ data class SongMetadataUpdate(
     val albumId: Long?,
     val displayName: String?,
     val coverPath: String?,
+    val mimeType: String? = null,
+    val sampleRateHz: Int? = null,
+    val bitrateKbps: Int? = null,
     val isAbPartB: Boolean = false,
     // PC 端把候选循环点存在 LoopPoints.LoopCandidatesJson；手机端存在 Songs.LoopCandidatesJson。
     // 默认为 null 表示“不更新缓存字段”，避免普通扫描批量更新时清空已有探测缓存喵。

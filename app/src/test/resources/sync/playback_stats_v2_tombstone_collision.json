@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 2,
+  "deviceId": "desktop-wpf-1",
+  "exportedAt": 1783779600000,
+  "playlists": [],
+  "loopPoints": [],
+  "ratings": [],
+  "playbackStatistics": {
+    "dateBucketBasis": "sourceLocal",
+    "devices": [
+      {
+        "deviceId": "android-pixel-8",
+        "displayName": "Google Pixel 8",
+        "firstSeenAtUtcMs": 1783588500000,
+        "lastSeenAtUtcMs": 1783672200000,
+        "currentGeneration": 2,
+        "platform": "android",
+        "displayNameUpdatedAtUtcMs": 1783588500000
+      },
+      {
+        "deviceId": "desktop-wpf-1",
+        "displayName": "Windows desktop",
+        "firstSeenAtUtcMs": 1783588500000,
+        "lastSeenAtUtcMs": 1783779600000,
+        "currentGeneration": 1,
+        "platform": "windows",
+        "displayNameUpdatedAtUtcMs": 1783588500000
+      }
+    ],
+    "songs": [
+      {
+        "song": {
+          "fileName": "  CAFÉ.MP3  ",
+          "durationMs": 123456,
+          "totalSamples": 5444400,
+          "normalizedFileName": "café.mp3"
+        },
+        "contributions": [
+          {
+            "deviceId": "android-pixel-8",
+            "generation": 1,
+            "datedListenMs": { "2026-07-09": 15000 },
+            "undatedListenMs": 0,
+            "firstPlayedAtUtcMs": 1783622400000,
+            "lastPlayedAtUtcMs": 1783622400000,
+            "updatedAtUtcMs": 1783622400000
+          }
+        ]
+      }
+    ],
+    "tombstones": []
+  }
+}

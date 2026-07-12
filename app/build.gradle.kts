@@ -1,6 +1,5 @@
 plugins {
     alias(libs.plugins.android.application)
-    // alias(libs.plugins.kotlin.android)
     alias(libs.plugins.google.devtools.ksp)
     alias(libs.plugins.compose.compiler)
 }
@@ -30,6 +29,10 @@ android {
     }
 
     buildTypes {
+        getByName("debug") {
+            isDebuggable = true
+            isMinifyEnabled = false
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -55,6 +58,10 @@ android {
     }
 }
 
+composeCompiler {
+    includeSourceInformation = true
+}
+
 ksp {
     arg("room.generateKotlin", "true")
 }
@@ -67,7 +74,9 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
     testImplementation("org.mockito:mockito-core:5.11.0")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.1")
     testImplementation(libs.androidx.core)
+    testImplementation(libs.androidx.work.testing)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 
@@ -97,5 +106,10 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.gson)
+    implementation(libs.haze.jetpack.compose)
+    implementation(libs.coil.compose)
+    implementation(libs.okhttp)
+    implementation(libs.androidx.work.runtime.ktx)
+
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

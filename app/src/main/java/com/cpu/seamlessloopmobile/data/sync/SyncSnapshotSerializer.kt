@@ -15,7 +15,7 @@ import java.time.LocalDate
  * - 拒绝空/格式错误的 JSON
  */
 class SyncSnapshotSerializer(
-    private val gson: Gson = GsonBuilder().create()
+    private val gson: Gson = GsonBuilder().setPrettyPrinting().create()
 ) {
 
     /**

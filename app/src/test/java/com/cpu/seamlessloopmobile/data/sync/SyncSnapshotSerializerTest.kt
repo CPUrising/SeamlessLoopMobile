@@ -622,6 +622,26 @@ class SyncSnapshotSerializerTest {
     // -------------------------------------------------------------------
 
     @Test
+    fun `serialize produces multi-line indented json by default`() {
+        val snapshot = SyncSnapshot(
+            deviceId = "d1",
+            exportedAt = 100L,
+            loopPoints = listOf(
+                SyncLoopPointEntry(
+                    song = SyncSongIdentity("song1.mp3", 30000L),
+                    loopPoint = SyncLoopPoint(1000L, 5000L, 300L)
+                )
+            )
+        )
+        val json = serializer.serialize(snapshot)
+        assertTrue("expected multi-line indented JSON, got: $json", json.count { it == '\n' } >= 4)
+        assertTrue("expected indentation inside JSON, got: $json", json.contains("\n    "))
+        // Round-trip must remain intact.
+        val restored = serializer.deserialize(json)
+        assertEquals(snapshot, restored)
+    }
+
+    @Test
     fun `uses custom gson instance`() {
         val customGson = GsonBuilder().setPrettyPrinting().create()
         val customSerializer = SyncSnapshotSerializer(customGson)
